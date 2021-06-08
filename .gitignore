@@ -1,0 +1,8 @@
+node_modules
+.key
+Messages.txt
+Modifications.txt
+package.json
+package-lock.json
+voice clips
+songs
