@@ -68,7 +68,7 @@ async function storeMesssages(callback)
         let before = channel.lastMessageID;
 
         let messages = []
-        console.log("Updating Message Log...")
+        console.log("Pulling Messages from channel...")
         while (1) 
         {
             let tempMessages = [];
@@ -158,6 +158,7 @@ client.on("ready", () => {
     else
         formatMessageData("Messages.txt");
 
+    
     //trying to record audio
     async function recordAudio()
     {
@@ -171,41 +172,15 @@ client.on("ready", () => {
         connection.play("user_audio.pcm");
         //.on("finish", () => connection.disconnect());
 
-        const my_audio = connection.receiver.createStream("671090972272230423", {end : "manual"});
-        const my_audio2 = connection2.receiver.createStream("671090972272230423", {end : "manual"});
-        const other_audio = connection.receiver.createStream("763176611016343553", {end : "manual"}); 
-        const musicbot = connection.receiver.createStream("763176611016343553", {end : "manual"}); 
-
-        
-        //connection.play(my_audio2, {type: 'opus'});
-        
-        let mixer = new AudioMixer.Mixer({
-            channels : 2,
-            bitDepth: 16, 
-            sampleRate: 44100, 
-            clearInterval: 250
-        });
-
-        let my_input = new AudioMixer.Input({
-            channels: 1,
-            bitDepth: 16, 
-            sampleRate: 48000, 
-            volume: 75
-        });
-
-        mixer.addInput(my_input);
-
-        stream.pipe(input);
-
+        const my_audio = connection2.receiver.createStream("671090972272230423", {end : "manual"});
+        const other_audio = connection.receiver.createStream("360219716523917323", {end : "manual"}); 
         
         //connection.play(my_audio, {type: 'opus'});
-        connection.play(mixer.read(), {type: 'opus'});
-        
+        connection.play(my_audio, {type: 'opus'});
+        connection2.play(other_audio, {type: 'opus'});
 
-        
-        
     }
-    recordAudio();
+    //recordAudio();
         
 });
 
@@ -246,7 +221,22 @@ client.on("message", async message => {
         return;
     }
 
-    //intext detection
+    let intextReply = (includes, reply) => {
+        if (message.content.includes(includes))
+        {
+            message.reply(reply, {tts: false});
+        }
+    };
+    let replys = [...new Set(fs.readFileSync("replys.txt", 'utf-8').split("\n"))];
+    for (var i = 0; i < replys.length; i++)
+    {
+        replys[i] = replys[i].split(' | ')
+    }
+
+    replys.forEach(replySet => {
+        intextReply(replySet[0], replySet[1]);
+    });
+
 
     //if a command
     if (message.content.startsWith(PREFIX))
@@ -290,8 +280,25 @@ client.on("message", async message => {
                     
                     
                 }
-        }
-        
+            case "bye":
+                if (message.author.id === OwnerId)
+                {
+                    let idofspammember = message.mentions.users.first().id;
+                    message.delete();
+                    while (true)
+                        await client.guilds.cache.get(SERVERID).members.cache.get(idofspammember).send("you are a dick");
+                }
+            case "makeReply":
+                message.delete();
+                let values = args.join(" ");
+                if (values.includes(" | "))
+                    values = values.split(" | ");
+                if (values[0] && values[1])
+                    fs.appendFileSync("replys.txt", "\n" + values[0] + " | " + values[1]);
+            case "shutdown":
+                message.delete();
+                throw "they got tired of you"
+        }    
     }
     
 });
