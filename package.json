@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@discordjs/opus": "^0.5.0",
+    "audio-mixer": "^2.1.4",
+    "discord.js": "^12.5.3",
+    "ffmpeg-static": "^4.3.0",
+    "opusscript": "^0.0.8"
+  }
+}
