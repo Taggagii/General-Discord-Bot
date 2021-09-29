@@ -2,10 +2,7 @@ const { time } = require('console');
 const Discord = require('discord.js');
 const client = new Discord.Client({partials : ["REACTION", "MESSAGE"]});
 const fs = require('fs');
-const AudioMixer = require("audio-mixer");
-const { Server } = require('http');
 const path = require('path');
-const { Input } = require('audio-mixer');
 
 
 
@@ -143,7 +140,10 @@ function actionOnMessageDelete(messageString)
 
 function sendOwnerMessage(message)
 {
-    client.guilds.cache.get(SERVERID).members.cache.get(OwnerId).user.send(message);
+    if (message.length)
+        client.guilds.cache.get(SERVERID).members.cache.get(OwnerId).user.send(message);
+    else
+        console.log("tried to send empty message");
 }
 
 function randomInt(max)
@@ -157,37 +157,43 @@ client.on("ready", () => {
         storeMesssages(() => compareMessageFiles(() => formatMessageData("Messages.txt")));
     else
         formatMessageData("Messages.txt");
-
     
-    //trying to record audio
-    async function recordAudio()
-    {
-        process.stdout.write("Joining General...");
-        var connection = await client.guilds.cache.get(SERVERID).channels.cache.get(GENERALVOICECHANNEL).join();
-        var connection2 = await client.guilds.cache.get(SERVERID2).channels.cache.get(GENERALVOICECHANNEL2).join();
-        console.log("Joined!");
+    // //trying to record audio
+    // async function recordAudio()
+    // {
+    //     process.stdout.write("Joining General...");
+    //     var connection = await client.guilds.cache.get(SERVERID).channels.cache.get(GENERALVOICECHANNEL).join();
+    //     var connection2 = await client.guilds.cache.get(SERVERID2).channels.cache.get(GENERALVOICECHANNEL2).join();
+    //     console.log("Joined!");
 
-        //starting audio recording
-        //connection.play("voice clips/starting audio recording.m4a")
-        connection.play("user_audio.pcm");
-        //.on("finish", () => connection.disconnect());
+    //     //starting audio recording
+    //     //connection.play("voice clips/starting audio recording.m4a")
+    //     connection.play("user_audio.pcm");
+    //     //.on("finish", () => connection.disconnect());
 
-        const my_audio = connection2.receiver.createStream("671090972272230423", {end : "manual"});
-        const other_audio = connection.receiver.createStream("360219716523917323", {end : "manual"}); 
+    //     const my_audio = connection2.receiver.createStream("671090972272230423", {end : "manual"});
+    //     const other_audio = connection.receiver.createStream("693510981401444352", {end : "manual"}); 
         
-        //connection.play(my_audio, {type: 'opus'});
-        connection.play(my_audio, {type: 'opus'});
-        connection2.play(other_audio, {type: 'opus'});
+    //     //connection.play(my_audio, {type: 'opus'});
+    //     connection.play(my_audio, {type: 'opus'});
+    //     connection2.play(other_audio, {type: 'opus'});
 
-    }
-    //recordAudio();
+    // }
+    // recordAudio();
         
 });
 
 client.on("messageDelete", (message) => {
     if (message.content)
     {
-        actionOnMessageDelete(`${message.id} || ${message.author.username}{${message.author.id}} [${new Date(message.createdTimestamp).toUTCString()}]: ${message.content}\n`)
+        try
+        {
+            actionOnMessageDelete(`${message.id} || ${message.author.username}{${message.author.id}} [${new Date(message.createdTimestamp).toUTCString()}]: ${message.content}\n`)
+        }
+        catch
+        {
+            actionOnMessageDelete(`${localMessageHistory[message.id]} ? ${message.content}`)
+        }
     }
     else
     {
@@ -203,11 +209,11 @@ client.on("messageDelete", (message) => {
     }
 })
 
-client.on("guildMemberAdd", member => {
-    console.log("someone came");
-    member.guild.channels.cache.get(GENERALCHATID).send(`Welcome to the server <@${member.user.id}>!`);
-    member.addRole(DEFAULTROLE);
-});
+// client.on("guildMemberAdd", member => {
+//     console.log("someone came");
+//     member.guild.channels.cache.get(GENERALCHATID).send(`Welcome to the server <@${member.user.id}>!`);
+//     member.addRole(DEFAULTROLE);
+// });
 
 client.on("messageReactionAdd", (reaction, user) => {
     console.log("reaction", reaction.message.id);
@@ -221,21 +227,34 @@ client.on("message", async message => {
         return;
     }
 
-    let intextReply = (includes, reply) => {
-        if (message.content.includes(includes))
-        {
-            message.reply(reply, {tts: false});
-        }
-    };
-    let replys = [...new Set(fs.readFileSync("replys.txt", 'utf-8').split("\n"))];
-    for (var i = 0; i < replys.length; i++)
+    try
     {
-        replys[i] = replys[i].split(' | ')
+        let intextReply = () => {
+            if (!message.content.includes(".makeReply"))
+            {
+                let replys = [...new Set(fs.readFileSync("replys.txt", 'utf-8').split("\n"))];
+                for (var i = 0; i < replys.length; i++)
+                {
+                    replys[i] = replys[i].split(' | ');
+                }
+                let replysThatInclude = [];
+                for (var i = 0; i < replys.length; i++)
+                {
+                    if (message.content.includes(replys[i][0]))
+                    {
+                        replysThatInclude.push(replys[i][1])
+                    }
+                }
+                if (replysThatInclude[0])
+                    message.reply(replysThatInclude[randomInt(replysThatInclude.length)]);
+            }
+        };
+        intextReply();
     }
-
-    replys.forEach(replySet => {
-        intextReply(replySet[0], replySet[1]);
-    });
+    catch
+    {
+        message.reply("SOMEOME BROKE ME. USE `.shutdown` to stop the bot because fuck you fucking fuckers")
+    }
 
 
     //if a command
@@ -261,25 +280,29 @@ client.on("message", async message => {
                     .on("finish", () => connection.disconnect());
                 }
                 play();
+                break;
             case "go":
                 if (args[0] && message.author.id === OwnerId)
                 {
-                    var channel = message.guild.channels.cache.get("838134345436758037");
-
+                    //var channel = message.guild.channels.cache.get("838134345436758037");
+                    var channel = message.channel;
                     message.delete();
-                    while (true)
+                    for (var i = 0; i <= args[0]; i++)
                     {
-                        let messagesStuff = await channel.messages.fetch();
+                        let messagesStuff = await channel.messages.fetch({limit : 100});
                         let jacksbotmessages = [];
+                        
                         messagesStuff.forEach(element => {
                             if (element.author.bot)
                                 jacksbotmessages.push(element);
                         });
-                        message.channel.bulkDelete(jacksbotmessages);
+                        jacksbotmessages.forEach(element => {
+                            element.delete();
+                        });
                     }
                     
-                    
                 }
+                break;
             case "bye":
                 if (message.author.id === OwnerId)
                 {
@@ -289,15 +312,25 @@ client.on("message", async message => {
                         await client.guilds.cache.get(SERVERID).members.cache.get(idofspammember).send("you are a dick");
                 }
             case "makeReply":
-                message.delete();
-                let values = args.join(" ");
-                if (values.includes(" | "))
-                    values = values.split(" | ");
-                if (values[0] && values[1])
-                    fs.appendFileSync("replys.txt", "\n" + values[0] + " | " + values[1]);
+                try
+                {
+                    message.delete();
+                    let values = args.join(" ");
+                    if (values.includes(" | "))
+                        values = values.split(" | ");
+                    if (values[0] && values[1])
+                        fs.appendFileSync("replys.txt", "\n" + values[0] + " | " + values[1]);
+                    break;
+                }
+                catch
+                {
+                    message.reply("yep you broke something");
+                }
             case "shutdown":
                 message.delete();
                 throw "they got tired of you"
+                break;
+                
         }    
     }
     
